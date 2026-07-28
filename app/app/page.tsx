@@ -1,13 +1,16 @@
 "use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { Program, AnchorProvider, Idl, BorshCoder } from "@coral-xyz/anchor";
+import dynamic from "next/dynamic";
+import { Program, AnchorProvider, Idl } from "@coral-xyz/anchor";
 import { useCallback, useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { IDL } from "@/lib/idl";
 
-const PROGRAM_ID = new PublicKey(IDL.address);
+const WalletMultiButton = dynamic(
+  () => import("@solana/wallet-adapter-react-ui").then((m) => m.WalletMultiButton),
+  { ssr: false }
+);
 
 interface CheckInRecord {
   name: string;
@@ -22,10 +25,18 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [txSig, setTxSig] = useState("");
 
+  const getProvider = useCallback(() => {
+    return new AnchorProvider(connection, wallet as any, {});
+  }, [connection, wallet]);
+
+  const getProgram = useCallback(() => {
+    return new Program(IDL as unknown as Idl, getProvider());
+  }, [getProvider]);
+
   const getPda = useCallback((publicKey: PublicKey) => {
     return PublicKey.findProgramAddressSync(
       [publicKey.toBuffer()],
-      PROGRAM_ID
+      new PublicKey(IDL.address)
     );
   }, []);
 
@@ -33,21 +44,16 @@ export default function Home() {
     if (!wallet.publicKey) return;
     const [pda] = getPda(wallet.publicKey);
     try {
-      const accountInfo = await connection.getAccountInfo(pda);
-      if (!accountInfo) {
-        setRecord(null);
-        return;
-      }
-      const coder = new BorshCoder(IDL as unknown as Idl);
-      const decoded = coder.accounts.decode("CheckInRecord", accountInfo.data);
+      const program = getProgram();
+      const account = await program.account.checkInRecord.fetch(pda);
       setRecord({
-        name: decoded.name,
-        checkedInAt: Number(decoded.checkedInAt),
+        name: account.name,
+        checkedInAt: Number(account.checkedInAt),
       });
     } catch {
       setRecord(null);
     }
-  }, [wallet.publicKey, connection, getPda]);
+  }, [wallet.publicKey, getProgram, getPda]);
 
   useEffect(() => {
     fetchRecord();
@@ -57,8 +63,7 @@ export default function Home() {
     if (!wallet.publicKey || !wallet.signTransaction || !name.trim()) return;
     setLoading(true);
     try {
-      const provider = new AnchorProvider(connection, wallet as any, {});
-      const program = new Program(IDL as unknown as Idl, provider);
+      const program = getProgram();
       const tx = await program.methods.checkIn(name.trim()).rpc();
       setTxSig(tx);
       await fetchRecord();
