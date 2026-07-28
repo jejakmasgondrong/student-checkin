@@ -12,3 +12,4 @@ test-ledger
 # next.js
 app/.next/
 app/next-env.d.ts
+.vercel
