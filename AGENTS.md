@@ -39,4 +39,4 @@ A Solana check-in program (Anchor + Rust) with Next.js frontend. Devnet only.
 - Frontend: ✅ built, wallet connect + check-in UI
 - Deploy program: ✅ deployed to devnet — Program ID `DjWcuYf5QkPAPFPzyv4rgwk6oXELrjxZgodt2zkVrDuk`
 - Deploy frontend: ✅ Vercel — https://student-checkin-superteam.vercel.app
-- Version: v0.3.0
+- Version: v0.3.1
