@@ -5,14 +5,14 @@ package_manager = "npm"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
+[programs.devnet]
 student_checkin = "DjWcuYf5QkPAPFPzyv4rgwk6oXELrjxZgodt2zkVrDuk"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [test]
