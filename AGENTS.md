@@ -1,14 +1,41 @@
 # AGENTS.md -- student-checkin (devnet)
 
-A Solana check-in program (Anchor + Rust). Devnet only.
+A Solana check-in program (Anchor + Rust) with Next.js frontend. Devnet only.
 
-## Stack and versions (do not drift)
+## Stack & versions (do not drift)
 
 - Anchor 1.0.0 (crate `anchor-lang`). Solana CLI Agave >= 2.0. Rust stable.
-- Frontend: `@solana/web3.js`, `@solana/wallet-adapter-react`. Node 20 LTS.
+- Frontend: Next.js 16, `@solana/web3.js` v1, `@solana/wallet-adapter-react`, `@coral-xyz/anchor`. Node 20 LTS.
 - Package manager: npm
+
+## Structure
+
+```
+├── programs/student-checkin/   Anchor program (Rust)
+├── app/                        Next.js frontend
+├── tests/                      Anchor test (TS)
+└── Anchor.toml                 Anchor config (devnet)
+```
 
 ## Build & test
 
-- `anchor build`
+- `anchor build` -- build program
 - `anchor test --validator legacy` -- 2 passing
+- `cd app && npm run dev` -- frontend dev server
+- `cd app && npm run build` -- frontend prod build
+
+## Deploy
+
+- `anchor deploy` -- deploy program to devnet (requires devnet SOL)
+- Frontend deployed separately (Vercel or similar)
+
+## Frontend pages
+
+- `/` -- check-in form + record display (wallet required)
+
+## Status
+
+- Program: ✅ complete, 2 passing tests
+- Frontend: ✅ built, wallet connect + check-in UI
+- Deploy: ✅ deployed to devnet — Program ID `DjWcuYf5QkPAPFPzyv4rgwk6oXELrjxZgodt2zkVrDuk`
+- Frontend build: ✅ passing
