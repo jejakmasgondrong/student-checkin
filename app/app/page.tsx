@@ -1,11 +1,11 @@
 "use client";
 
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
 import dynamic from "next/dynamic";
-import { Program, AnchorProvider, Idl } from "@coral-xyz/anchor";
+import { Program, AnchorProvider } from "@coral-xyz/anchor";
 import { useCallback, useEffect, useState } from "react";
-import { PublicKey } from "@solana/web3.js";
-import { IDL } from "@/lib/idl";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
+import idlJson from "@/idl/student_checkin.json";
 
 const WalletMultiButton = dynamic(
   () => import("@solana/wallet-adapter-react-ui").then((m) => m.WalletMultiButton),
@@ -19,33 +19,33 @@ interface CheckInRecord {
 
 export default function Home() {
   const { connection } = useConnection();
-  const wallet = useWallet();
+  const { connected, publicKey } = useWallet();
+  const anchorWallet = useAnchorWallet();
   const [name, setName] = useState("");
   const [record, setRecord] = useState<CheckInRecord | null>(null);
   const [loading, setLoading] = useState(false);
-  const [txSig, setTxSig] = useState("");
-
-  const getProvider = useCallback(() => {
-    return new AnchorProvider(connection, wallet as any, {});
-  }, [connection, wallet]);
+  const [txSig, setTxSig] = useState<string | null>(null);
 
   const getProgram = useCallback(() => {
-    return new Program(IDL as unknown as Idl, getProvider());
-  }, [getProvider]);
+    if (!anchorWallet) return null;
+    const provider = new AnchorProvider(connection, anchorWallet, {});
+    return new Program(idlJson as any, provider);
+  }, [connection, anchorWallet]);
 
-  const getPda = useCallback((publicKey: PublicKey) => {
+  const getPda = useCallback((key: PublicKey) => {
     return PublicKey.findProgramAddressSync(
-      [publicKey.toBuffer()],
-      new PublicKey(IDL.address)
+      [key.toBuffer()],
+      new PublicKey(idlJson.address)
     );
   }, []);
 
   const fetchRecord = useCallback(async () => {
-    if (!wallet.publicKey) return;
-    const [pda] = getPda(wallet.publicKey);
+    if (!publicKey) return;
+    const [pda] = getPda(publicKey);
+    const program = getProgram();
+    if (!program) return;
     try {
-      const program = getProgram();
-      const account = await program.account.checkInRecord.fetch(pda);
+      const account = await (program as any).account.checkInRecord.fetch(pda);
       setRecord({
         name: account.name,
         checkedInAt: Number(account.checkedInAt),
@@ -53,19 +53,28 @@ export default function Home() {
     } catch {
       setRecord(null);
     }
-  }, [wallet.publicKey, getProgram, getPda]);
+  }, [publicKey, getProgram, getPda]);
 
   useEffect(() => {
-    fetchRecord();
-  }, [fetchRecord]);
+    if (connected) fetchRecord();
+  }, [connected, fetchRecord]);
 
   const handleCheckIn = async () => {
-    if (!wallet.publicKey || !wallet.signTransaction || !name.trim()) return;
+    if (!anchorWallet || !publicKey || !name.trim()) return;
     setLoading(true);
     try {
       const program = getProgram();
-      const tx = await program.methods.checkIn(name.trim()).rpc();
-      setTxSig(tx);
+      if (!program) return;
+      const [pda] = getPda(publicKey);
+      const sig = await program.methods
+        .checkIn(name.trim())
+        .accounts({
+          record: pda,
+          student: publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      setTxSig(sig);
       await fetchRecord();
       setName("");
     } catch (err: any) {
@@ -87,7 +96,7 @@ export default function Home() {
           <WalletMultiButton />
         </div>
 
-        {wallet.publicKey && (
+        {publicKey && (
           <>
             <div className="p-4 rounded-lg border space-y-4">
               <h2 className="font-semibold">Check In</h2>
@@ -101,16 +110,24 @@ export default function Home() {
               />
               <button
                 onClick={handleCheckIn}
-                disabled={loading || !name.trim()}
+                disabled={!connected || loading || !name.trim()}
                 className="w-full py-2 rounded bg-blue-600 text-white font-medium disabled:opacity-50"
               >
-                {loading ? "Checking in..." : "Check In"}
+                {loading ? "Checking in..." : !connected ? "Connect wallet first" : "Check In"}
               </button>
             </div>
 
             {txSig && (
               <p className="text-xs text-center break-all opacity-60">
-                Tx: {txSig.slice(0, 32)}...
+                Tx:{" "}
+                <a
+                  href={`https://explorer.solana.com/tx/${txSig}?cluster=devnet`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  {txSig.slice(0, 8)}…
+                </a>
               </p>
             )}
 
