@@ -73,7 +73,8 @@ export default function Home() {
       await fetchRecord();
       setName("");
     } catch (err: any) {
-      alert(err.message || "Check-in failed");
+      console.error("Check-in error:", err);
+      alert(`Error: ${err.message || "Check-in failed"}`);
     } finally {
       setLoading(false);
     }
