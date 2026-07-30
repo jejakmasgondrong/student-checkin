@@ -4,7 +4,7 @@ import { useConnection, useWallet, useAnchorWallet } from "@solana/wallet-adapte
 import dynamic from "next/dynamic";
 import { Program, AnchorProvider } from "@coral-xyz/anchor";
 import { useCallback, useEffect, useState } from "react";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import idlJson from "@/idl/student_checkin.json";
 
 const WalletMultiButton = dynamic(
@@ -21,10 +21,13 @@ export default function Home() {
   const { connection } = useConnection();
   const { connected, publicKey } = useWallet();
   const anchorWallet = useAnchorWallet();
+  const [mounted, setMounted] = useState(false);
   const [name, setName] = useState("");
   const [record, setRecord] = useState<CheckInRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [txSig, setTxSig] = useState<string | null>(null);
+
+  useEffect(() => setMounted(true), []);
 
   const getProgram = useCallback(() => {
     if (!anchorWallet) return null;
@@ -65,15 +68,7 @@ export default function Home() {
     try {
       const program = getProgram();
       if (!program) return;
-      const [pda] = getPda(publicKey);
-      const sig = await program.methods
-        .checkIn(name.trim())
-        .accounts({
-          record: pda,
-          student: publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+      const sig = await program.methods.checkIn(name.trim()).rpc();
       setTxSig(sig);
       await fetchRecord();
       setName("");
@@ -96,7 +91,7 @@ export default function Home() {
           <WalletMultiButton />
         </div>
 
-        {publicKey && (
+        {mounted && publicKey && (
           <>
             <div className="p-4 rounded-lg border space-y-4">
               <h2 className="font-semibold">Check In</h2>
