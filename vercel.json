@@ -1,5 +1,4 @@
 {
   "name": "student-checkin-superteam",
-  "framework": "nextjs",
-  "rootDirectory": "app"
+  "framework": "nextjs"
 }
