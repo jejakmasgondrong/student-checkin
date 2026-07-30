@@ -8,6 +8,7 @@ test-ledger
 
 # env files
 .env*
+!app/.env.example
 
 # next.js
 app/.next/
