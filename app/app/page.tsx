@@ -1,5 +1,7 @@
 "use client";
 
+import "@/lib/buffer-polyfill";
+
 import { useConnection, useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
 import dynamic from "next/dynamic";
 import { Program, AnchorProvider, BN } from "@coral-xyz/anchor";
@@ -23,6 +25,16 @@ interface CheckInRecord {
 
 function currentDay(): number {
   return Math.floor(Date.now() / 1000 / SECONDS_PER_DAY);
+}
+
+function daySeed(day: number): Uint8Array {
+  const buf = new Uint8Array(8);
+  let value = day;
+  for (let i = 0; i < 8; i++) {
+    buf[i] = value & 0xff;
+    value = Math.floor(value / 256);
+  }
+  return buf;
 }
 
 function formatDate(ts: number): string {
@@ -112,10 +124,7 @@ export default function Home() {
 
   const getPda = useCallback(
     (key: PublicKey, dayNumber: number) => {
-      return PublicKey.findProgramAddressSync(
-        [key.toBuffer(), new BN(dayNumber).toBuffer("le", 8)],
-        programId
-      );
+      return PublicKey.findProgramAddressSync([key.toBytes(), daySeed(dayNumber)], programId);
     },
     [programId]
   );

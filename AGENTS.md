@@ -38,7 +38,7 @@ A Solana check-in program (Anchor + Rust) with Next.js frontend. Devnet only.
 - Program: ✅ complete, PDA per (student, day) — strict once-per-day check-in
 - Program instruction: `check_in(name: String, day: i64)` — day is epoch day (unix/86400)
 - Frontend: ✅ built, wallet connect + daily check-in + all-students list
-- Deploy program: ⏳ undeployed from devnet (v0.4.0) — redeploy after devnet SOL top-up
+- Deploy program: ✅ deployed to devnet — Program ID `FhdBeBTPm5LKmwL2HEJgc567ZGa5Wy5JfZSiBfL1dvNL` (v0.4.3, new keypair after close)
 - Deploy frontend: ✅ Vercel — https://student-checkin-superteam.vercel.app
-- Version: v0.4.0
+- Version: v0.4.3
 - Frontend AI rules: `app/AGENTS.md`

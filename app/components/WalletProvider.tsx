@@ -1,5 +1,7 @@
 "use client";
 
+import "@/lib/buffer-polyfill";
+
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import {
   ConnectionProvider,
