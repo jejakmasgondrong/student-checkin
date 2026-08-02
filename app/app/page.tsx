@@ -2,8 +2,8 @@
 
 import { useConnection, useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
 import dynamic from "next/dynamic";
-import { Program, AnchorProvider } from "@coral-xyz/anchor";
-import { useCallback, useEffect, useState } from "react";
+import { Program, AnchorProvider, BN } from "@coral-xyz/anchor";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import idlJson from "@/idl/student_checkin.json";
 
@@ -12,9 +12,21 @@ const WalletMultiButton = dynamic(
   { ssr: false }
 );
 
+const SECONDS_PER_DAY = 86400;
+
 interface CheckInRecord {
   name: string;
   checkedInAt: number;
+  day: number;
+  publicKey: string;
+}
+
+function currentDay(): number {
+  return Math.floor(Date.now() / 1000 / SECONDS_PER_DAY);
+}
+
+function formatDate(ts: number): string {
+  return new Date(ts * 1000).toLocaleString();
 }
 
 export default function Home() {
@@ -24,10 +36,17 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [name, setName] = useState("");
   const [record, setRecord] = useState<CheckInRecord | null>(null);
+  const [allRecords, setAllRecords] = useState<CheckInRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
   const [txSig, setTxSig] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const day = useMemo(() => currentDay(), []);
 
   useEffect(() => setMounted(true), []);
+
+  const programId = useMemo(() => new PublicKey(idlJson.address), []);
 
   const getProgram = useCallback(() => {
     if (!anchorWallet) return null;
@@ -35,16 +54,19 @@ export default function Home() {
     return new Program(idlJson as any, provider);
   }, [connection, anchorWallet]);
 
-  const getPda = useCallback((key: PublicKey) => {
-    return PublicKey.findProgramAddressSync(
-      [key.toBuffer()],
-      new PublicKey(idlJson.address)
-    );
-  }, []);
+  const getPda = useCallback(
+    (key: PublicKey, dayNumber: number) => {
+      return PublicKey.findProgramAddressSync(
+        [key.toBuffer(), new BN(dayNumber).toBuffer("le", 8)],
+        programId
+      );
+    },
+    [programId]
+  );
 
   const fetchRecord = useCallback(async () => {
     if (!publicKey) return;
-    const [pda] = getPda(publicKey);
+    const [pda] = getPda(publicKey, currentDay());
     const program = getProgram();
     if (!program) return;
     try {
@@ -52,33 +74,66 @@ export default function Home() {
       setRecord({
         name: account.name,
         checkedInAt: Number(account.checkedInAt),
+        day: Number(account.day),
+        publicKey: pda.toString(),
       });
     } catch {
       setRecord(null);
     }
   }, [publicKey, getProgram, getPda]);
 
+  const fetchAllRecords = useCallback(async () => {
+    const program = getProgram();
+    if (!program) return;
+    setLoadingList(true);
+    try {
+      const accounts = await (program as any).account.checkInRecord.all();
+      const records: CheckInRecord[] = accounts
+        .map(({ publicKey: pk, account }: any) => ({
+          name: account.name,
+          checkedInAt: Number(account.checkedInAt),
+          day: Number(account.day),
+          publicKey: pk.toString(),
+        }))
+        .sort((a: CheckInRecord, b: CheckInRecord) => b.checkedInAt - a.checkedInAt);
+      setAllRecords(records);
+    } catch (err: any) {
+      console.error("Error fetching records:", err);
+      setError(err.message || "Failed to load student list");
+    } finally {
+      setLoadingList(false);
+    }
+  }, [getProgram]);
+
   useEffect(() => {
-    if (connected) fetchRecord();
-  }, [connected, fetchRecord]);
+    if (connected) {
+      fetchRecord();
+      fetchAllRecords();
+    }
+  }, [connected, fetchRecord, fetchAllRecords]);
 
   const handleCheckIn = async () => {
     if (!anchorWallet || !publicKey || !name.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const program = getProgram();
       if (!program) return;
-      const sig = await program.methods.checkIn(name.trim()).rpc();
+      const today = currentDay();
+      const sig = await program.methods.checkIn(name.trim(), new BN(today)).rpc();
       setTxSig(sig);
       await fetchRecord();
+      await fetchAllRecords();
       setName("");
     } catch (err: any) {
       console.error("Check-in error:", err);
-      alert(`Error: ${err.message || "Check-in failed"}`);
+      setError(err.message || "Check-in failed. You may have already checked in today.");
     } finally {
       setLoading(false);
     }
   };
+
+  const todayString = new Date(day * SECONDS_PER_DAY * 1000).toDateString();
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -86,6 +141,7 @@ export default function Home() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Student Check-In</h1>
           <p className="text-sm opacity-70">Solana devnet — Anchor</p>
+          <p className="text-xs opacity-60">Today: {todayString}</p>
         </div>
 
         <div className="flex justify-center">
@@ -109,8 +165,9 @@ export default function Home() {
                 disabled={!connected || loading || !name.trim()}
                 className="w-full py-2 rounded bg-blue-600 text-white font-medium disabled:opacity-50"
               >
-                {loading ? "Checking in..." : !connected ? "Connect wallet first" : "Check In"}
+                {loading ? "Checking in..." : !connected ? "Connect wallet first" : "Check In Today"}
               </button>
+              {error && <p className="text-xs text-red-400">{error}</p>}
             </div>
 
             {txSig && (
@@ -128,23 +185,65 @@ export default function Home() {
             )}
 
             <div className="p-4 rounded-lg border space-y-2">
-              <h2 className="font-semibold">Your Record</h2>
+              <h2 className="font-semibold">Your Record Today</h2>
               {record ? (
                 <div className="text-sm space-y-1">
                   <p>
                     <span className="opacity-60">Name:</span> {record.name}
                   </p>
                   <p>
-                    <span className="opacity-60">Checked in:</span>{" "}
-                    {new Date(record.checkedInAt * 1000).toLocaleString()}
+                    <span className="opacity-60">Checked in:</span> {formatDate(record.checkedInAt)}
+                  </p>
+                  <p>
+                    <span className="opacity-60">Day:</span> {record.day}
                   </p>
                 </div>
               ) : (
-                <p className="text-sm opacity-50">No record found. Check in above!</p>
+                <p className="text-sm opacity-50">
+                  No record today. Check in above to get started!
+                </p>
               )}
             </div>
           </>
         )}
+
+        <div className="p-4 rounded-lg border space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">All Students</h2>
+            {connected && (
+              <button
+                onClick={fetchAllRecords}
+                disabled={loadingList}
+                className="text-xs text-blue-400 underline disabled:opacity-50"
+              >
+                {loadingList ? "Refreshing..." : "Refresh"}
+              </button>
+            )}
+          </div>
+          {connected ? (
+            allRecords.length > 0 ? (
+              <ul className="text-sm space-y-2">
+                {allRecords.map((r) => (
+                  <li key={r.publicKey} className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                    <div>
+                      <p className="font-medium">{r.name}</p>
+                      <p className="text-xs opacity-60">
+                        {new Date(r.day * SECONDS_PER_DAY * 1000).toDateString()}
+                      </p>
+                    </div>
+                    <p className="text-xs opacity-60">{formatDate(r.checkedInAt)}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm opacity-50">
+                {loadingList ? "Loading..." : "No students have checked in yet."}
+              </p>
+            )
+          ) : (
+            <p className="text-sm opacity-50">Connect wallet to view the student list.</p>
+          )}
+        </div>
       </div>
     </div>
   );

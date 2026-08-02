@@ -9,6 +9,13 @@
   "instructions": [
     {
       "name": "check_in",
+      "docs": [
+        "Records a check-in for `name` on a given epoch `day`.",
+        "",
+        "The PDA is derived from (student, day), so each student can check in",
+        "at most once per day. A second check-in on the same day fails because",
+        "the account already exists."
+      ],
       "discriminator": [
         209,
         253,
@@ -28,6 +35,10 @@
               {
                 "kind": "account",
                 "path": "student"
+              },
+              {
+                "kind": "arg",
+                "path": "day"
               }
             ]
           }
@@ -46,6 +57,10 @@
         {
           "name": "name",
           "type": "string"
+        },
+        {
+          "name": "day",
+          "type": "i64"
         }
       ]
     }
@@ -84,6 +99,10 @@
           },
           {
             "name": "checked_in_at",
+            "type": "i64"
+          },
+          {
+            "name": "day",
             "type": "i64"
           }
         ]
