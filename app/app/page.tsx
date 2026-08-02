@@ -29,6 +29,62 @@ function formatDate(ts: number): string {
   return new Date(ts * 1000).toLocaleString();
 }
 
+function getErrorMessage(err: any): string {
+  const msg: string = err?.message || String(err || "");
+  const lower = msg.toLowerCase();
+
+  if (
+    lower.includes("account") &&
+    (lower.includes("already") || lower.includes("exists") || lower.includes("in use"))
+  ) {
+    return "You have already checked in today. Please come back tomorrow!";
+  }
+
+  if (
+    lower.includes("insufficient lamports") ||
+    lower.includes("insufficient funds") ||
+    lower.includes("0x1") ||
+    lower.includes("attempt to debit") ||
+    lower.includes("rent")
+  ) {
+    return "Insufficient SOL in your wallet. Add devnet SOL to your wallet and try again.";
+  }
+
+  if (lower.includes("user rejected") || lower.includes("rejected the request") || lower.includes("denied")) {
+    return "Transaction was rejected. Please approve the request in your wallet and try again.";
+  }
+
+  if (
+    lower.includes("blockhash") ||
+    lower.includes("expired") ||
+    lower.includes("timeout") ||
+    lower.includes("timed out") ||
+    lower.includes("not confirmed")
+  ) {
+    return "Transaction timed out or expired. Please try again.";
+  }
+
+  if (
+    lower.includes("failed to fetch") ||
+    lower.includes("network") ||
+    lower.includes("connection") ||
+    lower.includes("rpc") ||
+    lower.includes("getaddrinfo")
+  ) {
+    return "Network or RPC error. Check your connection and try again.";
+  }
+
+  if (lower.includes("invalid name") || lower.includes("name must")) {
+    return "Name must be between 1 and 32 characters.";
+  }
+
+  if (lower.includes("wallet") || lower.includes("not connected")) {
+    return "Please connect your wallet first.";
+  }
+
+  return "Check-in failed. Please try again.";
+}
+
 export default function Home() {
   const { connection } = useConnection();
   const { connected, publicKey } = useWallet();
@@ -127,16 +183,7 @@ export default function Home() {
       setName("");
     } catch (err: any) {
       console.error("Check-in error:", err);
-      const msg: string = err?.message || "";
-      const lower = msg.toLowerCase();
-      if (
-        lower.includes("account") &&
-        (lower.includes("already") || lower.includes("exists") || lower.includes("in use"))
-      ) {
-        setError("You have already checked in today. Please come back tomorrow!");
-      } else {
-        setError("Check-in failed. Please try again.");
-      }
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
