@@ -205,7 +205,7 @@ export default function Home() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Student Check-In</h1>
-          <p className="text-sm opacity-70">Solana devnet — Anchor</p>
+          <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-400">Solana devnet</span>
           <p className="text-xs opacity-60">Today: {todayString}</p>
         </div>
 
