@@ -4,8 +4,8 @@ import "@/lib/buffer-polyfill";
 
 import { useConnection, useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
 import dynamic from "next/dynamic";
-import { Program, AnchorProvider, BN } from "@coral-xyz/anchor";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Program, AnchorProvider, BN, type Idl } from "@coral-xyz/anchor";
+import { useCallback, useEffect, useMemo, useSyncExternalStore, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import idlJson from "@/idl/student_checkin.json";
 
@@ -22,6 +22,19 @@ interface CheckInRecord {
   day: number;
   publicKey: string;
 }
+
+interface CheckInRecordAccount {
+  name: string;
+  checkedInAt: BN;
+  day: BN;
+}
+
+type CheckInAccountNamespace = {
+  checkInRecord: {
+    fetch(address: PublicKey): Promise<CheckInRecordAccount>;
+    all(): Promise<Array<{ publicKey: PublicKey; account: CheckInRecordAccount }>>;
+  };
+};
 
 function currentDay(): number {
   return Math.floor(Date.now() / 1000 / SECONDS_PER_DAY);
@@ -41,8 +54,8 @@ function formatDate(ts: number): string {
   return new Date(ts * 1000).toLocaleString();
 }
 
-function getErrorMessage(err: any): string {
-  const msg: string = err?.message || String(err || "");
+function getErrorMessage(err: unknown): string {
+  const msg: string = err instanceof Error ? err.message : String(err ?? "");
   const lower = msg.toLowerCase();
 
   if (
@@ -101,7 +114,6 @@ export default function Home() {
   const { connection } = useConnection();
   const { connected, publicKey } = useWallet();
   const anchorWallet = useAnchorWallet();
-  const [mounted, setMounted] = useState(false);
   const [name, setName] = useState("");
   const [record, setRecord] = useState<CheckInRecord | null>(null);
   const [allRecords, setAllRecords] = useState<CheckInRecord[]>([]);
@@ -112,14 +124,18 @@ export default function Home() {
 
   const day = useMemo(() => currentDay(), []);
 
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   const programId = useMemo(() => new PublicKey(idlJson.address), []);
 
   const getProgram = useCallback(() => {
     if (!anchorWallet) return null;
     const provider = new AnchorProvider(connection, anchorWallet, {});
-    return new Program(idlJson as any, provider);
+    return new Program(idlJson as Idl, provider);
   }, [connection, anchorWallet]);
 
   const getPda = useCallback(
@@ -135,7 +151,7 @@ export default function Home() {
     const program = getProgram();
     if (!program) return;
     try {
-      const account = await (program as any).account.checkInRecord.fetch(pda);
+      const account = await (program.account as unknown as CheckInAccountNamespace).checkInRecord.fetch(pda);
       setRecord({
         name: account.name,
         checkedInAt: Number(account.checkedInAt),
@@ -152,9 +168,9 @@ export default function Home() {
     if (!program) return;
     setLoadingList(true);
     try {
-      const accounts = await (program as any).account.checkInRecord.all();
+      const accounts = await (program.account as unknown as CheckInAccountNamespace).checkInRecord.all();
       const records: CheckInRecord[] = accounts
-        .map(({ publicKey: pk, account }: any) => ({
+        .map(({ publicKey: pk, account }) => ({
           name: account.name,
           checkedInAt: Number(account.checkedInAt),
           day: Number(account.day),
@@ -162,19 +178,21 @@ export default function Home() {
         }))
         .sort((a: CheckInRecord, b: CheckInRecord) => b.checkedInAt - a.checkedInAt);
       setAllRecords(records);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching records:", err);
-      setError(err.message || "Failed to load student list");
+      setError(err instanceof Error ? err.message : "Failed to load student list");
     } finally {
       setLoadingList(false);
     }
   }, [getProgram]);
 
   useEffect(() => {
-    if (connected) {
-      fetchRecord();
-      fetchAllRecords();
-    }
+    if (!connected) return;
+    const timer = window.setTimeout(() => {
+      void fetchRecord();
+      void fetchAllRecords();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [connected, fetchRecord, fetchAllRecords]);
 
   const handleCheckIn = async () => {
@@ -190,7 +208,7 @@ export default function Home() {
       await fetchRecord();
       await fetchAllRecords();
       setName("");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Check-in error:", err);
       setError(getErrorMessage(err));
     } finally {

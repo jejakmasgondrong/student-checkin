@@ -1,5 +1,11 @@
 import { Buffer } from "buffer";
 
-if (typeof globalThis !== "undefined" && typeof (globalThis as any).Buffer === "undefined") {
-  (globalThis as any).Buffer = Buffer;
+type GlobalWithBuffer = typeof globalThis & {
+  Buffer?: typeof Buffer;
+};
+
+const globalObject = globalThis as GlobalWithBuffer;
+
+if (typeof globalObject.Buffer === "undefined") {
+  globalObject.Buffer = Buffer;
 }
