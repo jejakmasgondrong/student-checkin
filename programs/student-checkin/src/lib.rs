@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("DjWcuYf5QkPAPFPzyv4rgwk6oXELrjxZgodt2zkVrDuk");
+declare_id!("FhdBeBTPm5LKmwL2HEJgc567ZGa5Wy5JfZSiBfL1dvNL");
 
 const MAX_NAME: usize = 32;
 

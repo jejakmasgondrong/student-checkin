@@ -6,18 +6,18 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-student_checkin = "DjWcuYf5QkPAPFPzyv4rgwk6oXELrjxZgodt2zkVrDuk"
-
-[registry]
-url = "https://api.apr.dev"
+student_checkin = "FhdBeBTPm5LKmwL2HEJgc567ZGa5Wy5JfZSiBfL1dvNL"
 
 [provider]
 cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
-[test]
-startup_wait = 15000
-genesis_location = ""
-
 [scripts]
 test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[hooks]
+
+[test]
+startup_wait = 15000
+shutdown_wait = 2000
+upgradeable = false
