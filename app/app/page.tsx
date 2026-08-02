@@ -127,7 +127,16 @@ export default function Home() {
       setName("");
     } catch (err: any) {
       console.error("Check-in error:", err);
-      setError(err.message || "Check-in failed. You may have already checked in today.");
+      const msg: string = err?.message || "";
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes("account") &&
+        (lower.includes("already") || lower.includes("exists") || lower.includes("in use"))
+      ) {
+        setError("You have already checked in today. Please come back tomorrow!");
+      } else {
+        setError("Check-in failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -152,22 +161,30 @@ export default function Home() {
           <>
             <div className="p-4 rounded-lg border space-y-4">
               <h2 className="font-semibold">Check In</h2>
-              <input
-                type="text"
-                placeholder="Your name (max 32 chars)"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={32}
-                className="w-full px-3 py-2 rounded border bg-transparent"
-              />
-              <button
-                onClick={handleCheckIn}
-                disabled={!connected || loading || !name.trim()}
-                className="w-full py-2 rounded bg-blue-600 text-white font-medium disabled:opacity-50"
-              >
-                {loading ? "Checking in..." : !connected ? "Connect wallet first" : "Check In Today"}
-              </button>
-              {error && <p className="text-xs text-red-400">{error}</p>}
+              {record ? (
+                <div className="rounded bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-400">
+                  You have already checked in today. Please come back tomorrow!
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Your name (max 32 chars)"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    maxLength={32}
+                    className="w-full px-3 py-2 rounded border bg-transparent"
+                  />
+                  <button
+                    onClick={handleCheckIn}
+                    disabled={!connected || loading || !name.trim()}
+                    className="w-full py-2 rounded bg-blue-600 text-white font-medium disabled:opacity-50"
+                  >
+                    {loading ? "Checking in..." : !connected ? "Connect wallet first" : "Check In Today"}
+                  </button>
+                  {error && <p className="text-xs text-red-400">{error}</p>}
+                </>
+              )}
             </div>
 
             {txSig && (
