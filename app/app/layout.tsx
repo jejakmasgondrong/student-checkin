@@ -28,6 +28,16 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <SolanaWalletProvider>{children}</SolanaWalletProvider>
+        <footer className="mt-auto border-t border-zinc-800 py-4 text-center">
+          <a
+            href="https://www.linkedin.com/in/rsatriya-wicaksana-56b026ab/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors"
+          >
+            Built by RSatriya · Contact Me
+          </a>
+        </footer>
       </body>
     </html>
   );
