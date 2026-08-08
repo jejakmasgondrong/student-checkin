@@ -225,6 +225,26 @@ export default function Home() {
           <h1 className="text-2xl font-bold">Student Check-In</h1>
           <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-400">Solana devnet</span>
           <p className="text-xs opacity-60">Today: {todayString}</p>
+          <p className="text-sm text-zinc-400 leading-relaxed pt-2">
+            Attend this workshop by checking in once per day on the Solana
+            devnet. Connect your wallet, submit your name, and a strict
+            once-per-day on-chain record is created for you — no login, no
+            database, just the blockchain.
+          </p>
+          <p className="text-xs text-zinc-500 leading-relaxed pt-2 max-w-sm mx-auto">
+            How it works: your wallet address and today's date are used to
+            derive a unique on-chain account. Because each account is unique
+            per day, you can only check in once per day per wallet — and every
+            record stays visible to anyone on the devnet.
+          </p>
+          <p className="text-xs text-zinc-500 leading-relaxed pt-2 max-w-sm mx-auto">
+            Why check in on-chain? A blockchain attendance log is transparent,
+            immutable, and impossible to fake. Anyone can read the full student
+            list in real time, verify today's check-ins, and confirm that the
+            data was never edited by hand. This project is part of the Superteam
+            bootcamp on Solana — a hands-on example of how Anchor programs,
+            PDAs, and wallet authentication work together in a real dapp.
+          </p>
         </div>
 
         <div className="flex justify-center">
